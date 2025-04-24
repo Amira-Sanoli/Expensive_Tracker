@@ -1,1 +1,1 @@
-# Expensive_Tracker
+This project is a responsive Expense Tracker (INR) web application built using React, styled with Tailwind CSS, and integrated with Chart.js for data visualization. It allows users to add and manage their expenses by entering the date, amount, category, and description. The app dynamically calculates and displays the total expenses, the number of active spending categories, and the total number of transactions.# Expensive_Tracker
