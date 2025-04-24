@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker (INR)</title>
+    <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.22.9/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const categories = [
+            'Food', 'Transport', 'Utilities', 'Entertainment', 'Shopping', 'Other'
+        ];
+
+        const initialTransactions = [
+            { id: 1, date: '2025-04-15', amount: 2125.50, category: 'Food', description: 'Groceries' },
+            { id: 2, date: '2025-04-14', amount: 1250.00, category: 'Transport', description: 'Bus fare' },
+            { id: 3, date: '2025-04-13', amount: 6700.00, category: 'Utilities', description: 'Electricity bill' },
+        ];
+
+        // Function to format numbers in Indian style
+        const formatINR = (amount) => {
+            return new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: 'INR',
+                minimumFractionDigits: 2
+            }).format(amount);
+        };
+
+        function App() {
+            const [transactions, setTransactions] = useState(initialTransactions);
+            const [formData, setFormData] = useState({
+                date: '', amount: '', category: categories[0], description: ''
+            });
+            const chartRef = useRef(null); // Store Chart.js instance
+            const canvasRef = useRef(null); // Reference to canvas element
+
+            const handleInputChange = (e) => {
+                const { name, value } = e.target;
+                setFormData({ ...formData, [name]: value });
+            };
+
+            const addTransaction = (e) => {
+                e.preventDefault();
+                const newTransaction = {
+                    id: transactions.length + 1,
+                    ...formData,
+                    amount: parseFloat(formData.amount)
+                };
+                setTransactions([...transactions, newTransaction]);
+                setFormData({ date: '', amount: '', category: categories[0], description: '' });
+            };
+
+            const totalExpenses = transactions.reduce((sum, t) => sum + t.amount, 0);
+
+            const categoryBreakdown = categories.reduce((acc, category) => {
+                const total = transactions
+                    .filter(t => t.category === category)
+                    .reduce((sum, t) => sum + t.amount, 0);
+                acc[category] = total;
+                return acc;
+            }, {});
+
+            // Render and update pie chart when transactions change
+            useEffect(() => {
+                if (canvasRef.current) {
+                    // Destroy existing chart if it exists
+                    if (chartRef.current) {
+                        chartRef.current.destroy();
+                    }
+
+                    const ctx = canvasRef.current.getContext('2d');
+                    chartRef.current = new Chart(ctx, {
+                        type: 'pie',
+                        data: {
+                            labels: Object.keys(categoryBreakdown),
+                            datasets: [{
+                                data: Object.values(categoryBreakdown),
+                                backgroundColor: [
+                                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
+                                ]
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            plugins: {
+                                legend: {
+                                    position: 'top',
+                                    labels: {
+                                        font: {
+                                            size: 12 // Smaller font for legend
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // Cleanup on component unmount
+                return () => {
+                    if (chartRef.current) {
+                        chartRef.current.destroy();
+                        chartRef.current = null;
+                    }
+                };
+            }, [transactions]); // Re-run when transactions change
+
+            return (
+                <div className="min-h-screen bg-gray-100 p-4">
+                    <h1 className="text-3xl font-bold text-center mb-6">Expense Tracker (INR)</h1>
+
+                    {/* Dashboard */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div className="bg-white p-4 rounded-lg shadow">
+                            <h2 className="text-lg font-semibold">Total Expenses</h2>
+                            <p className="text-2xl">{formatINR(totalExpenses)}</p>
+                        </div>
+                        <div className="bg-white p-4 rounded-lg shadow">
+                            <h2 className="text-lg font-semibold">Categories</h2>
+                            <p>{Object.keys(categoryBreakdown).length} Active</p>
+                        </div>
+                        <div className="bg-white p-4 rounded-lg shadow">
+                            <h2 className="text-lg font-semibold">Recent Transactions</h2>
+                            <p>{transactions.length} Total</p>
+                        </div>
+                    </div>
+
+                    {/* Transaction Form */}
+                    <div className="bg-white p-6 rounded-lg shadow mb-6">
+                        <h2 className="text-xl font-semibold mb-4">Add Transaction</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input
+                                type="date"
+                                name="date"
+                                value={formData.date}
+                                onChange={handleInputChange}
+                                className="border p-2 rounded"
+                                required
+                            />
+                            <input
+                                type="number"
+                                name="amount"
+                                value={formData.amount}
+                                onChange={handleInputChange}
+                                placeholder="Amount (₹)"
+                                className="border p-2 rounded"
+                                required
+                            />
+                            <select
+                                name="category"
+                                value={formData.category}
+                                onChange={handleInputChange}
+                                className="border p-2 rounded"
+                            >
+                                {categories.map(cat => (
+                                    <option key={cat} value={cat}>{cat}</option>
+                                ))}
+                            </select>
+                            <input
+                                type="text"
+                                name="description"
+                                value={formData.description}
+                                onChange={handleInputChange}
+                                placeholder="Description"
+                                className="border p-2 rounded"
+                            />
+                            <button
+                                onClick={addTransaction}
+                                className="col-span-1 md:col-span-2 bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
+                            >
+                                Add Transaction
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Category Pie Chart */}
+                    <div className="bg-white p-6 rounded-lg shadow mb-6">
+                        <h2 className="text-xl font-semibold mb-4">Category Breakdown</h2>
+                        <div className="flex justify-center">
+                            <canvas ref={canvasRef} id="categoryChart" className="max-w-[300px] max-h-[300px]"></canvas>
+                        </div>
+                    </div>
+
+                    {/* Transaction List */}
+                    <div className="bg-white p-6 rounded-lg shadow">
+                        <h2 className="text-xl font-semibold mb-4">Recent Transactions</h2>
+                        <table className="w-full">
+                            <thead>
+                                <tr className="bg-gray-200">
+                                    <th className="p-2 text-left">Date</th>
+                                    <th className="p-2 text-left">Amount</th>
+                                    <th className="p-2 text-left">Category</th>
+                                    <th className="p-2 text-left">Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {transactions.sort((a, b) => new Date(b.date) - new Date(a.date)).map(t => (
+                                    <tr key={t.id} className="border-b">
+                                        <td className="p-2">{t.date}</td>
+                                        <td className="p-2">{formatINR(t.amount)}</td>
+                                        <td className="p-2">{t.category}</td>
+                                        <td className="p-2">{t.description}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        }
+
+        // Render App
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
